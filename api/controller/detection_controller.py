@@ -13,7 +13,8 @@ detection_bp = Blueprint('detection_bp', __name__, url_prefix='/detections')
 # POST — Detect and Save
 @detection_bp.route('/', methods=['POST'])
 @token_required
-def detect(current_user):
+def create_detection(current_user):
+    #Upload a detection (pothole or waste) Everything except the image is automatically determined.
     image = request.files.get('image')
     lat = request.form.get('latitude')
     lon = request.form.get('longitude')
@@ -32,6 +33,11 @@ def detect(current_user):
 
     if detection_type is None:
         return jsonify({'message': 'No pothole or waste detected!'}), 200
+    
+    # determine  severity/category and department automatically 
+    pothole_severity = result_data.get("severity") if detection_type == "pothole" else None
+    waste_category = result_data.get("waste_category") if detection_type == "waste" else None
+    department = "Road Department" if detection_type == "pothole" else "Waste Management Department"
 
     # Store in database with user_id
     record = Detection(
@@ -42,10 +48,10 @@ def detect(current_user):
         longitude=longitude,
         location=location,
         timestamp=datetime.utcnow(),
-        severity=result_data.get('severity') if detection_type=='pothole' else None,
-        waste_category=result_data.get('waste_category') if detection_type=='waste' else None,
-        department='road' if detection_type=='pothole' else 'waste',
-        detection_status='pending'    
+        pothole_severity=result_data.get('pothole_severity'),
+        waste_category=result_data.get('waste_category'),
+        department=result_data.get('department'),
+        detection_status=result_data.get('detection_status')   #this willbe updated by the department later 
     )
 
 
@@ -63,9 +69,12 @@ def detect(current_user):
 @detection_bp.route('/my', methods=['GET'])
 @token_required
 def get_my_detections(current_user):
-    records = Detection.query.filter_by(user_id=current_user.id).all()
-    return jsonify([r.to_dict() for r in records]), 200
+    records = Detection.query.filter(Detection.user_id == current_user.id).all()
 
+    if not records:
+        return jsonify({'message': 'No detections found for this user'}), 200
+
+    return jsonify([r.to_dict() for r in records]), 200
 
 #  GET — All by type(like pthole/waste) for current user
 @detection_bp.route('/my/<string:detection_type>', methods=['GET'])
@@ -79,7 +88,7 @@ def get_my_by_type(current_user, detection_type):
     return jsonify([r.to_dict() for r in records]), 200
 
 
-#  GET — Single by type + id for current user
+#  GET — single detection by id of the image for current user
 
 @detection_bp.route('/my/<int:id>', methods=['GET'])
 @token_required
@@ -117,8 +126,8 @@ def delete_my_detection(current_user, id):
         return jsonify({'error': 'Record not found'}), 404
 
     # Remove stored image from disk
-    if record.image_name:
-        folder = current_app.config.get('DETECTION_IMAGE_FOLDER')
+    folder = current_app.config.get('DETECTION_IMAGE_FOLDER')
+    if folder and record.image_name:
         image_path = os.path.join(folder, record.image_name)
         if os.path.exists(image_path):
             os.remove(image_path)
@@ -138,13 +147,12 @@ def delete_all_my_by_type(current_user, detection_type):
 
     records = Detection.query.filter_by(
         user_id=current_user.id, detection_type=detection_type).all()
-    count = len(records)
 
     folder = current_app.config.get('DETECTION_IMAGE_FOLDER')
 
     for record in records:
         # Remove stored image from disk
-        if record.image_name:
+        if folder and record.image_name:
             image_path = os.path.join(folder, record.image_name)
             if os.path.exists(image_path):
                 os.remove(image_path)
@@ -153,6 +161,6 @@ def delete_all_my_by_type(current_user, detection_type):
     db.session.commit()
 
     return jsonify({
-        'message': f'All your {detection_type} records deleted',
-        'deleted_count': count
+        "message": f"All {detection_type} records deleted successfully.",
+        "count": len(records)
     }), 200

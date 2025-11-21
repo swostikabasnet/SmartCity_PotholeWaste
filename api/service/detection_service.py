@@ -17,7 +17,7 @@ except Exception as e:
     WASTE_MODEL = None
 
 
-def detect_image_type(image): #Detect pothole or waste and save images to the correct storage folders."""
+def detect_image_type(image): #Detect pothole or waste and save images to the correct storage folders
 
     if not POTHOLE_MODEL or not WASTE_MODEL:
         return None, None
@@ -39,17 +39,25 @@ def detect_image_type(image): #Detect pothole or waste and save images to the co
 
     if len(pothole_results[0].boxes) > 0:
         # Save original inside pothole/original
-        image.save(pothole_original_path)
-
+        pothole_original_path = os.path.join(current_app.config['POTHOLE_ORIGINAL_FOLDER'], original_filename)
         # Save detected inside pothole/detected
         pothole_detected_path = os.path.join(current_app.config['POTHOLE_DETECTED_FOLDER'], detected_filename)
+        image.save(pothole_original_path)
         pothole_results[0].save(filename=pothole_detected_path)
+
+        # Extracting severity from YOLO class name
+        class_name = pothole_results[0].names[int(pothole_results[0].boxes.cls[0].item())]
+        
+        # class_name will be like "minor_pothole", "medium_pothole", "major_pothole"
+        pothole_severity = class_name.split('_')[0]  # get "minor", "medium", or "major"
 
         os.remove(temp_path)
         return "pothole", {
             "image_name": original_filename,
-            "detected_image_path": pothole_detected_path,
-            "status": "Pothole detected"
+            "pothole_severity": pothole_severity,
+            "waste_category": None,
+            "detection_status": f"{pothole_severity} pothole is detected.",
+            "department": "Road Department"
         }
 
     # ------------------ Run WASTE detection ------------------
@@ -57,12 +65,15 @@ def detect_image_type(image): #Detect pothole or waste and save images to the co
 
     if len(waste_results[0].boxes) > 0:
         # Save original inside waste/original
+        waste_original_path = os.path.join(current_app.config['WASTE_ORIGINAL_FOLDER'], original_filename)
         image.save(waste_original_path)
 
         # Save detected inside waste/detected
         waste_detected_path = os.path.join(current_app.config['WASTE_DETECTED_FOLDER'], detected_filename)
         waste_results[0].save(filename=waste_detected_path)
 
+
+        #mapping YOLO class to waste category
         first_class = int(waste_results[0].boxes.cls[0].item())
         CLASS_MAP = {0: 'Glass', 1: 'Metal', 2: 'Paper', 3: 'Plastic', 4: 'Residual'}
         category = CLASS_MAP.get(first_class, "Unknown")
@@ -70,14 +81,19 @@ def detect_image_type(image): #Detect pothole or waste and save images to the co
         os.remove(temp_path)
         return "waste", {
             "image_name": original_filename,
-            "detected_image_path": waste_detected_path,
-            "detection_status": f"{category} detected",
-            "is_waste": True,
+            "pothole_severity": None,
             "waste_category": category,
-            "is_recyclable": category not in ["Residual"],
-            "is_decomposable": category == "Paper"
+            "detection_status": f"{category} is detected",
+            "department": "Waste Management Department"
         }
 
     # No detection = delete temp file
     os.remove(temp_path)
-    return None, None
+    return None, {
+        "image_name": None,
+        "pothole_severity": None,
+        "waste_category": None,
+        "detection_status": "No detection",
+        "department": None
+    }
+   

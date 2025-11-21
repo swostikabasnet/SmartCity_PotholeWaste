@@ -17,7 +17,6 @@ class Detection(db.Model):
     location = db.Column(db.String(255), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
    
-   
     # Pothole-specific
     pothole_severity = db.Column(db.String(20), nullable=True)
 
@@ -27,8 +26,8 @@ class Detection(db.Model):
     # Department handling the detection
     department = db.Column(db.String(100), nullable=False)
 
-    # Common status
-    detection_status = db.Column(db.String(50), default="pending")
+    # # Common status
+    detection_status = db.Column(db.String(50), nullable=False)
 
 
     user = db.relationship("User", backref=db.backref("detections", lazy=True))
@@ -42,10 +41,10 @@ class Detection(db.Model):
             "latitude": self.latitude,
             "longitude": self.longitude,
             "location": self.location,
-            "timestamp": self.timestamp,
             "pothole_severity": self.pothole_severity,
             "waste_category": self.waste_category,
             "department": self.department,
+            "timestamp": self.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
             "detection_status": self.detection_status
             
         }
