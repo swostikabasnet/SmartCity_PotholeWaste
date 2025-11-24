@@ -24,6 +24,7 @@ Auto waste category detection (Glass, Metal, Paper, Plastic, Residual)
 ## API Testing
 - Register user -> http://127.0.0.1:5000/auth/register
 - Login user -> http://127.0.0.1:5000/auth/login (token is generated)
+  ### Token is required
 - Upload image -> http://127.0.0.1:5000/api/detections
 - Get all detections of current user -> http://127.0.0.1:5000/api/detections/my
 - Get detections by type -> http://127.0.0.1:5000/api/detections/pothole (or waste)
@@ -31,6 +32,7 @@ Auto waste category detection (Glass, Metal, Paper, Plastic, Residual)
 - Update loaction -> http://127.0.0.1:5000/api/detections/my/1
 - Delete all detections by type -> http://127.0.0.1:5000/api/detections/my/pothole (or waste)
 - Delete detection by image id -> http://127.0.0.1:5000/api/detections/my/1
+
 
 
 
