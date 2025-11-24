@@ -14,12 +14,12 @@ Auto pothole severity detection (minor/medium/major)
 Auto waste category detection (Glass, Metal, Paper, Plastic, Residual)
 
 ## Tech Stack
-Backend: Flask
-DB: PostgreSQL
-ORM: SQLAlchemy
-ML Models: YOLOv8
-Auth: JWT
-Tools: Postman
+- Backend: Flask
+- DB: PostgreSQL
+- ORM: SQLAlchemy
+- ML Models: YOLOv8
+- Auth: JWT
+- Tools: Postman
 
 ## API Testing
 - Register user -> http://127.0.0.1:5000/auth/register
@@ -31,5 +31,6 @@ Tools: Postman
 - Update loaction -> http://127.0.0.1:5000/api/detections/my/1
 - Delete all detections by type -> http://127.0.0.1:5000/api/detections/my/pothole (or waste)
 - Delete detection by image id -> http://127.0.0.1:5000/api/detections/my/1
+
 
 
