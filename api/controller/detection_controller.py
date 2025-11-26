@@ -1,10 +1,15 @@
 import os
+import uuid
 from flask import Blueprint, request, jsonify, current_app
 from database import db
 from api.service.detection_service import detect_image_type
 from api.controller.auth.auth_middleware import token_required
 from api.models.user_model import User 
 from api.models.detection_model import Detection
+from api.models.department import Department
+from api.models.image import Image
+from api.models.tag import Tag
+from api.models.relations import DetectionDepartment, DetectionTag
 from datetime import datetime
 
 detection_bp = Blueprint('detection_bp', __name__, url_prefix='/detections')
@@ -34,15 +39,42 @@ def create_detection(current_user):
     if detection_type is None:
         return jsonify({'message': 'No pothole or waste detected!'}), 200
     
-    # determine  severity/category and department automatically 
-    pothole_severity = result_data.get("severity") if detection_type == "pothole" else None
-    waste_category = result_data.get("waste_category") if detection_type == "waste" else None
-    department = "Road Department" if detection_type == "pothole" else "Waste Management Department"
+    # # determine  severity/category and department automatically 
+    # pothole_severity = result_data.get("pothole_severity") if detection_type == "pothole" else None
+    # waste_category = result_data.get("waste_category") if detection_type == "waste" else None
+    # department = "Road Department" if detection_type == "pothole" else "Waste Management Department"
+
+
+    # Determine department and tags
+    if detection_type == 'pothole':
+        department_name = "Road Department"
+        tag_names = [result_data.get('pothole_severity')] 
+    else:
+        department_name = "Waste Management Department"
+        tag_names = [result_data.get('waste_category')] 
+
+    # Find or create department
+    department = Department.query.filter_by(name=department_name).first()
+    if not department:
+        department = Department(name=department_name)
+        db.session.add(department)
+        db.session.commit()
+
+    # Construct paths for already uploaded images
+    image_name = image.filename
+    image_path = f"uploads/{detection_type}/{image_name}"
+    if detection_type == 'pothole':
+        detected_image_path = f"storage/pothole/detected/{image_name}"
+    else:
+        detected_image_path = f"storage/waste/detected/{image_name}"
+   
 
     # Store in database with user_id
-    record = Detection(
+    detection = Detection(
         user_id=current_user.id,
         image_name=result_data['image_name'],
+        image_path=image_path,
+        detected_image_path=detected_image_path,
         detection_type=detection_type,  # 'pothole' or 'waste'
         latitude=latitude,
         longitude=longitude,
@@ -51,16 +83,53 @@ def create_detection(current_user):
         pothole_severity=result_data.get('pothole_severity'),
         waste_category=result_data.get('waste_category'),
         department=result_data.get('department'),
-        detection_status=result_data.get('detection_status')   #this willbe updated by the department later 
+        detection_status=result_data.get('detection_status')    
     )
-
-
-    db.session.add(record)
+    db.session.add(detection)
     db.session.commit()
+
+    # Link detection to department
+    det_dept = DetectionDepartment(
+        detection_id=detection.id,
+        department_id=department.id
+    )
+    db.session.add(det_dept)
+
+    # Link detection to tags
+    for t_name in tag_names:
+        if t_name:
+            tag = Tag.query.filter_by(name=t_name).first()
+            if not tag:
+                tag = Tag(name=t_name, type=detection_type)
+                db.session.add(tag)
+                db.session.commit()
+            det_tag = DetectionTag(detection_id=detection.id, tag_id=tag.id)
+            db.session.add(det_tag)
+
+    # Save uploaded image in Image table
+    filename = None
+    if image:
+        filename = f"{uuid.uuid4().hex}_{image.filename}"
+        folder = current_app.config.get('DETECTION_IMAGE_FOLDER')
+        if folder:
+            path = os.path.join(folder, filename)
+            image.save(path)
+
+        img_record = Image(
+            id=uuid.uuid4().hex,
+            detection_id=detection.id,
+            uploaded_filename=filename,
+            annotated_filename=None,
+            timestamp=str(datetime.utcnow())
+        )
+        db.session.add(img_record)
+
+    db.session.commit()
+
 
     return jsonify({
         'message': f'{detection_type.capitalize()} detected successfully.',
-        'data': record.to_dict()
+        'data': detection.to_dict()
     }), 201
 
 
