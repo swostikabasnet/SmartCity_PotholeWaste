@@ -5,7 +5,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "key123")
 
     #database configuration
-    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:%40user123@localhost:5432/merged_detections'
+    SQLALCHEMY_DATABASE_URI = 'postgresql://postgres:%40user123@localhost:5432/merged_detections_local'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     #Base directory
