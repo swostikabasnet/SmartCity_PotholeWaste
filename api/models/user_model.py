@@ -17,6 +17,8 @@ class User(db.Model):
         default=datetime.utcnow,
         onupdate=datetime.utcnow
     )
+    #Relationship 
+    detections = db.relationship("Detection", backref="user", lazy=True) #friendship = to create relationship between tables
 
     def to_dict(self):
         return {

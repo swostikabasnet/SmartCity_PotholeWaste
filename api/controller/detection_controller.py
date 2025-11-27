@@ -139,7 +139,7 @@ def create_detection(current_user):
 @token_required
 def get_my_detections(current_user):
     records = Detection.query.filter(Detection.user_id == current_user.id).all()
-
+    # this is feteching dtetctions from db using query
     if not records:
         return jsonify({'message': 'No detections found for this user'}), 200
 
@@ -148,7 +148,8 @@ def get_my_detections(current_user):
 #  GET — All by type(like pthole/waste) for current user
 @detection_bp.route('/my/<string:detection_type>', methods=['GET'])
 @token_required
-def get_my_by_type(current_user, detection_type):
+def get_my_by_type(current_user, detection_type): # using current_user from the token in the route so it 
+    #automatically know the user ID from the token(we  don't need to pass user id in the route)
     if detection_type not in ['pothole', 'waste']:
         return jsonify({'error': 'Invalid detection type'}), 400
 
@@ -164,6 +165,41 @@ def get_my_by_type(current_user, detection_type):
 def get_my_single(current_user, id):
     record = Detection.query.filter_by(user_id=current_user.id, id=id).first_or_404()
     return jsonify(record.to_dict()), 200
+
+
+#GET — All detections for current user(uses relationship defined in the user model)
+@detection_bp.route('/user', methods=['GET'])
+@token_required
+def my_detections(current_user):
+    return jsonify([d.to_dict(include_user=True) for d in current_user.detections]), 200
+#Note: user info ko lagi chai detection model ma to_dict() dunction ma include_user parameter add gareko xa so
+
+
+# #  GET — All detections by user id (admin can get any user's detections)
+# #directly filters detections by user_id
+# @detection_bp.route('/user/<int:user_id>', methods=['GET'])
+# @token_required
+# def get_detections_by_user(current_user, user_id):
+#     # Normal users can only access their own detections
+#     if current_user.role != 'admin' and current_user.id != user_id:
+#         return jsonify({'error': 'Unauthorized access'}), 403
+
+#     detections = Detection.query.filter_by(user_id=user_id).all()
+#     if not detections:
+#         return jsonify({'message': 'No detections found for this user'}), 404
+
+#     data = []
+#     for det in detections:
+#         det_dict = det.to_dict()
+#         det_dict['user'] = {
+#             'id': det.user.id,
+#             'email': det.user.email,
+#             'role': det.user.role,
+#             'organization_name': det.user.organization_name
+#         }
+#         data.append(det_dict)
+
+#     return jsonify({'detections': data}), 200
 
 
 # PUT — Update detection (user can update only location)

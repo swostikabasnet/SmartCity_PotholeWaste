@@ -22,15 +22,15 @@ class Detection(db.Model):
     detection_status = db.Column(db.String(50), nullable=False)
 
 
-    user = db.relationship("User", backref=db.backref("detections", lazy=True))
+    # user = db.relationship("User", backref=db.backref("detections", lazy=True))
 
     # Relationships
     departments = db.relationship("DetectionDepartment",backref="detection",lazy=True,cascade="all, delete-orphan")
     tags = db.relationship("DetectionTag",backref="detection",lazy=True,cascade="all, delete-orphan")
     images = db.relationship("Image",backref="detection",lazy=True,cascade="all, delete-orphan")
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_user=False):
+        data={
             "id": self.id,
             "user_id": self.user_id,
             "image_name": self.image_name,
@@ -47,3 +47,11 @@ class Detection(db.Model):
             "detection_status": self.detection_status,
             "tags": [t.tag.name for t in self.tags] 
         }
+        if include_user:
+            data["user"] = {
+            "id": self.user.id,
+            "email": self.user.email,
+            "role": self.user.role,
+            "organization_name": self.user.organization_name
+        }
+        return data
